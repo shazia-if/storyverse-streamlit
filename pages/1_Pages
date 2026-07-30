@@ -7,12 +7,12 @@ db = Session()
 
 if "current_story_title" in st.session_state:
     st.info(
-        f"📖 Current Story: "
+        f" Current Story: "
         f"{st.session_state['current_story_title']}"
     )
 
 
-st.title("📚 Add Stories")
+st.title("Add Stories")
 
 with st.form("story_form"):
 
@@ -61,7 +61,7 @@ stories = db.query(Story).all()
 for story in stories:
 
     #st.container()
-    with st.expander(f"📖 {story.title}", expanded=False):
+    with st.expander(f" {story.title}", expanded=False):
     
         st.write(
             f"**Status:** {story.status}"
