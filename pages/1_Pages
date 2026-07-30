@@ -1,0 +1,93 @@
+import streamlit as st
+
+from database import Session
+from models import Story
+
+db = Session()
+
+if "current_story_title" in st.session_state:
+    st.info(
+        f"📖 Current Story: "
+        f"{st.session_state['current_story_title']}"
+    )
+
+
+st.title("📚 Add Stories")
+
+with st.form("story_form"):
+
+    title = st.text_input("Story Title")
+
+    description = st.text_area("Description")
+    tags = st.text_input("Tags")
+    status= st.selectbox("Status", ["Select Status","Ongoing", "Completed"])
+
+    submitted = st.form_submit_button(
+        "Create Story"
+    )
+
+    if submitted:
+
+        if title.strip() == "":
+            st.error("Title Cannot Be Empty.")
+        elif status=="Select Status":
+            st.error("Please Choose a Status")
+        else:
+            story = Story(
+                title=title,
+                description=description,
+                tags=tags,
+                status=status)
+            
+            db.add(story)
+            db.commit()
+
+            st.success("Story created successfully!")
+            st.session_state["title"] = ""
+            st.session_state["description"] = ""
+            st.session_state["tags"] = ""
+            st.session_state["status"] = "Select Status"
+
+            st.rerun()
+            
+
+
+st.divider()
+
+st.subheader("Existing Stories")
+
+stories = db.query(Story).all()
+
+for story in stories:
+
+    #st.container()
+    with st.expander(f"📖 {story.title}", expanded=False):
+    
+        st.write(
+            f"**Status:** {story.status}"
+        )
+        if story.description:
+            st.write(
+                story.description
+            )
+
+        if story.tags:
+            tag_list = story.tags.split(",")
+            st.caption(" ".join([f"#{tag.strip()}" for tag in tag_list]))
+
+        if st.button(
+            "Open Story",
+            key=f"open_{story.id}"
+        ):
+            st.session_state["current_story_id"] = story.id
+            st.session_state["current_story_title"] = story.title
+
+            # st.success(f"Opened {story.title}") 
+            #switch page seemed better but might change it back
+            st.switch_page("pages/2_Characters.py")
+        
+
+
+
+
+st.divider()
