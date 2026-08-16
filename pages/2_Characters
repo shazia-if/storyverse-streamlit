@@ -1,0 +1,85 @@
+import streamlit as st
+
+from database import Session
+from models import Character
+
+db= Session()
+
+
+if "current_story_id" not in st.session_state:
+    st.warning(
+        "Please select a story first from the Stories page."
+    )
+    st.stop()
+
+else:
+    st.info(
+        f"📖 Current Story: "
+        f"{st.session_state['current_story_title']}"
+    )
+ # schema has id, story_id, name of character, character_type 
+ # (choose from ), motivation, description
+
+    st.title("👥 Characters")
+
+    with st.form("character_form"):
+        name = st.text_input("Character Name")
+        character_type= st.selectbox("Character Type", ["Select Type", 
+                                                        "Protagonist",
+                                                        "Antagonist",
+                                                        "Main Character",
+                                                        "Supporting Character",
+                                                        "Love Interest",
+                                                        "Mentor",
+                                                        "Side Character",
+                                                        "Other"])
+        
+        motivation = st.text_input("Motivation")
+        description = st.text_input("Description")
+
+        submitted = st.form_submit_button("Add Character")
+
+        if submitted:
+            if not name.strip():
+                st.error("Character name cannot be empty")
+            elif character_type=="Select Type":
+                st.error("Please choose a character type")
+            else:
+                character= Character(
+                                    story_id= st.session_state["current_story_id"],
+                                    name= name,
+                                    character_type= character_type,
+                                    motivation= motivation,
+                                    description= description 
+                                    )
+                st.success("Character Added Successfully")
+                db.add(character)
+                db.commit()
+
+
+st.divider()
+
+st.subheader("Existing Characters")
+# WRONG WRONG WRONG
+# characters= db.query(Character).all()
+
+characters = (
+    db.query(Character)
+    .filter(
+        Character.story_id ==
+        st.session_state["current_story_id"]
+    )
+    .all()
+)
+for character in characters:
+    with st.expander(f"{character.name} information"):
+        st.write(f"Character name: {character.name}")
+        st.write(f"Chracter Type: {character.character_type}")
+
+        if character.description:
+            st.write(f"Description: {character.description}") #maybe this should be at the end 
+
+        if character.motivation:
+            st.write(f"Motivation: {character.motivation}")
+    
+
