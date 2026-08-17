@@ -1,0 +1,148 @@
+import streamlit as st
+from models import Scene
+from models import SceneCharacter
+from models import Chapter
+from models import Character
+from models import Location
+from database import Session
+
+db= Session()
+
+
+
+if "current_story_id" not in st.session_state:
+    st.warning(
+        "Please select a story first from the Stories page."
+    )
+    st.stop()
+else:
+    st.info(
+        f"📖 Current Story: "
+        f"{st.session_state['current_story_title']}"
+    )
+
+#schema has story id, chapter id, chronological order and suborder,
+
+
+
+#All the contents import:
+
+
+
+
+locations = (
+    db.query(Location)
+    .filter(
+        Location.story_id ==
+        st.session_state["current_story_id"]
+    )
+    .all()
+)
+
+characters = (
+    db.query(Character)
+    .filter(
+        Character.story_id ==
+        st.session_state["current_story_id"]
+    )
+    .all()
+)
+
+
+location_options = {"No Location": None}
+
+location_options.update({
+    loc.name: loc.id
+    for loc in locations
+})
+
+character_options={c.name:c.id
+    for c in characters}
+
+
+st.title("Scenes")
+with st.form("scene_form"):
+    st.write(f"Add scenes for story {st.session_state['current_story_title']}")
+    
+
+   
+
+    scene_loc= st.selectbox("Select Location" , location_options)
+    loc_id = location_options[scene_loc]
+
+    scene_charas= st.multiselect("Select characters", 
+                                 character_options)
+
+    title= st.text_input("Add title")
+    summary= st.text_area("Add summary")
+    notes= st.text_area("Add notes")
+    scene_type= st.text_input("Add type")
+
+    submitted= st.form_submit_button("Add Scene")
+    
+    if submitted:
+
+        if not title:
+            st.error("Please add a title")
+        else:
+            scene= Scene(story_id= st.session_state["current_story_id"],
+
+                         title=title,
+                         summary= summary,
+                         location_id= loc_id,
+                         scene_type= scene_type,
+                         notes= notes)
+            db.add(scene)
+            db.commit()
+            db.refresh(scene)
+
+            for char_name in scene_charas:
+              
+                scene_chararacter = SceneCharacter(story_id=st.session_state
+                                ["current_story_id"],scene_id=scene.id,
+                    character_id= character_options[char_name])
+                db.add(scene_chararacter)
+            
+            st.success("Scene Added successfully")
+            st.rerun()
+
+st.divider()
+
+
+scenes = (db.query(Scene).filter(Scene.story_id ==
+            st.session_state["current_story_id"]).order_by
+            (Scene.id).all())
+                    
+    
+for scene in scenes:
+    character_names = (
+    db.query(Character.name)
+    .join(
+        SceneCharacter,
+        Character.id == SceneCharacter.character_id)
+    .filter(SceneCharacter.scene_id == scene.id).all())
+    
+    with st.expander(f"🎬{scene.title}"):
+        
+        
+        st.write("Scene Title:", scene.title)
+        if scene_charas:
+            names = [name for (name,) in character_names]
+
+            st.write(f"**Characters:** {', '.join(names)}")
+
+        if scene.scene_type:
+            st.write(f"Type:{scene.scene_type}")
+        
+        if scene.location_id:
+            location =db.get(Location, scene.location_id)
+            st.write(f"Location tagged:{location.name}")
+
+        if scene.summary:
+            st.write(f"**Summary**{scene.summary}")
+
+        if scene.notes:
+            st.write(f"Notes:{scene.notes}")
+
+       
+        
