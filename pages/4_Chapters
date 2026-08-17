@@ -1,0 +1,69 @@
+import streamlit as st
+from models import Chapter
+from database import Session
+
+db= Session()
+
+if "current_story_id" not in st.session_state:
+    st.warning(
+        "Please select a story first from the Stories page."
+    )
+    st.stop()
+else:
+    st.info(
+        f"📖 Current Story: "
+        f"{st.session_state['current_story_title']}"
+    )
+
+#schema has chp id, story id, chapter number, 
+# chapter title, chapter summary,
+#title, summary, location id, scene_type, notes
+# I am thinking after scenes are added they are also compiled here in chapters,
+#  in both types of orders? just the title like scene 1, 2 etc? 
+# and then can be expanded
+
+st.title("Chapters")
+
+
+with st.form("chapter_form"):
+    chapter_number= st.number_input("Chapter Number",min_value=1,step=1,format="%d")
+    title= st.text_input("Enter Title")
+    summary= st.text_area("Chapter Summary")
+    submitted =st.form_submit_button("Add Chapter")
+    
+
+    if submitted:
+        existing = (db.query(Chapter).filter(
+            Chapter.story_id == st.session_state["current_story_id"],
+            Chapter.chapter_number == chapter_number).first()) 
+        
+        if existing:
+            st.error(f"Chapter {chapter_number} already exists.")
+        
+
+        elif not title.strip():
+            st.error("Please add a title")
+
+        else:
+            chapter= Chapter(story_id=st.session_state["current_story_id"],
+                             chapter_number= chapter_number,
+                             chapter_title= title,
+                             chapter_summary= summary)
+            db.add(chapter)
+            db.commit()
+            st.success("Chapter added succcessfully!")
+            st.rerun()
+
+st.divider()
+
+chapters= db.query(Chapter).filter(
+    Chapter.story_id== st.session_state["current_story_id"]).order_by(
+                                                Chapter.chapter_number).all()
+
+for chap in chapters:
+    with st.expander(f"Chapter {chap.chapter_number}: {chap.chapter_title}"):
+        if chap.chapter_summary:
+            st.write(chap.chapter_summary)
+
+
+         
