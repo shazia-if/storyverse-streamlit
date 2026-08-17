@@ -1,0 +1,132 @@
+import streamlit as st
+
+from database import Session
+from models import Story
+from models import Chapter
+from models import Scene
+from models import ReaderOrder
+
+db= Session()
+
+if "current_story_id" not in st.session_state:
+    st.warning(
+        "Please select a story first from the Stories page."
+    )
+    st.stop()
+else:
+    st.info(
+        f"📖 Current Story: "
+        f"{st.session_state['current_story_title']}"
+    )
+
+
+
+#Getting the data
+
+#story_id = db.query(Story).where(Story.id== st.session_state["current_story_id"])
+story_id = st.session_state["current_story_id"]
+
+chapters = (
+    db.query(Chapter)
+    .filter(Chapter.story_id == story_id)
+    .order_by(Chapter.chapter_number)
+    .all()
+)
+
+scenes = (
+    db.query(Scene)
+    .filter(Scene.story_id == story_id)
+    .all()
+)
+
+
+
+
+st.title("Story Structure")
+for chap in chapters:
+    with st.expander(f"📖 Chapter {chap.chapter_number}:{chap.chapter_title}", 
+                     ):
+        
+        if chap.chapter_summary:
+            st.write(chap.chapter_summary)
+        
+        st.divider()
+        st.caption("Scenes")
+
+        chapter_scenes = (
+        db.query(Scene)
+        .filter(Scene.chapter_id == chap.id)
+        .all()
+        )
+
+        if chapter_scenes:
+            for scene in chapter_scenes:
+                st.write(scene.title)
+        else:
+            st.info("No scenes assigned.")
+
+
+unassigned = (
+    db.query(Scene)
+    .filter(
+        Scene.story_id == st.session_state["current_story_id"],
+        Scene.chapter_id == None
+    )
+    .all()
+)
+
+st.subheader("📦 Unassigned Scenes")
+
+if unassigned:
+
+    chapter_choices = {
+    f"Chapter {c.chapter_number}: {c.chapter_title}": c.id
+    for c in chapters}
+
+    for scene in unassigned:
+        with st.expander(f"🎬 {scene.title}"):
+                    if scene.summary:
+                        st.write(scene.summary)
+
+        selected = st.selectbox(
+            "Assign to chapter",
+            chapter_choices.keys(),
+            key=f"assign_{scene.id}"
+        )
+
+        if st.button(
+            "Assign",
+            key=f"btn_{scene.id}"
+        ):
+            selected_id= chapter_choices[selected]
+            scene.chapter_id = selected_id
+            #scene.chapter_id = chapter_choices[selected]
+
+            
+            last_position = (
+                db.query(ReaderOrder)
+                .filter(
+                    ReaderOrder.chapter_id == selected_id
+                )
+                .count()
+            )
+
+            reader = ReaderOrder(
+                chapter_id=selected_id,
+                scene_id=scene.id,
+                position=last_position + 1
+            )
+
+            db.add(reader)
+
+           
+
+            
+
+            db.commit()
+            st.rerun()
+else:
+    st.success("All scenes have been assigned!")
+    
+    
+
