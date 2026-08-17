@@ -1,0 +1,106 @@
+mport streamlit as st
+from models import Location
+from database import Session
+
+db= Session()
+
+if "current_story_id" not in st.session_state:
+    st.warning(
+        "Please select a story first from the Stories page."
+    )
+    st.stop()
+else:
+    st.info(
+        f"📖 Current Story: "
+        f"{st.session_state['current_story_title']}"
+    )
+
+#schema has id, story id, name location type, description, 
+# and IN? parent location id/name
+
+locations = (
+    db.query(Location)
+    .filter(
+        Location.story_id ==
+        st.session_state["current_story_id"]
+    )
+    .all()
+)
+
+st.title("Locations")
+
+with st.form("locations_form"):
+    name= st.text_input("ELocation name")
+    location_type= st.selectbox("Locations type", ["Select type", "World", 
+                                                   "Continent", "Country",
+                                                   "Kingdom", "Empire",
+                                                   "Region", "City/Town",
+                                                   "District" ,"Building",
+                                                   "Room", "Open Area" ,
+                                                   "Natural Landmark",
+                                                   "Water Body", 
+                                                   "Transportation", "Other"])
+    location_options = {"No Parent": None}
+
+    for loc in locations:
+        location_options[loc.name] = loc.id
+
+    description = st.text_area("Description")
+
+    parent_location = st.selectbox("Inside / Parent Location", 
+                                   location_options.keys())
+
+    submitted = st.form_submit_button("Add Location")
+
+    if submitted:
+            if not name.strip():
+                st.error("Location name cannot be empty.")
+
+            elif location_type == "Select type":
+                st.error("Please choose a location type.")
+
+            else:
+                 location = Location(
+                      story_id= st.session_state["current_story_id"],
+                      name= name,
+                      location_type= location_type,
+                      description= description,
+                      parent_location_id= location_options[parent_location]
+                 )
+            db.add(location)
+            db.commit()
+            st.success("Location added successfully!")
+
+            st.rerun()
+
+st.divider()
+
+st.header("Existing Locations")
+
+for loc in locations:
+
+    with st.expander(
+        f"📍 {loc.name}"
+    ):
+
+        st.write(
+            f"**Type:** "
+            f"{loc.location_type}"
+        )
+
+        if loc.description:
+            st.write(
+                loc.description
+            )
+
+        if loc.parent_location_id:
+
+            parent = db.get(
+                Location,
+                loc.parent_location_id
+            )
+
+            st.write(
+                f"Inside: "
+                f"{parent.name}"
+            )
