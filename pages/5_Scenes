@@ -112,7 +112,8 @@ st.divider()
 scenes = (db.query(Scene).filter(Scene.story_id ==
             st.session_state["current_story_id"]).order_by
             (Scene.id).all())
-                    
+
+target_scene_id = st.session_state.get("target_scene_id")
     
 for scene in scenes:
     character_names = (
@@ -122,11 +123,11 @@ for scene in scenes:
         Character.id == SceneCharacter.character_id)
     .filter(SceneCharacter.scene_id == scene.id).all())
     
-    with st.expander(f"🎬{scene.title}"):
+    with st.expander(f"🎬{scene.title}", expanded=(scene.id == target_scene_id)):
         
         
         st.write("Scene Title:", scene.title)
-        if scene_charas:
+        if character_names:
             names = [name for (name,) in character_names]
 
             st.write(f"**Characters:** {', '.join(names)}")
@@ -145,4 +146,5 @@ for scene in scenes:
             st.write(f"Notes:{scene.notes}")
 
        
-        
+if target_scene_id is not None:
+    del st.session_state["target_scene_id"]      
