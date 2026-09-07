@@ -54,14 +54,122 @@ for chap in chapters:
         st.caption("Scenes")
 
         chapter_scenes = (
-        db.query(Scene)
-        .filter(Scene.chapter_id == chap.id)
+        db.query(ReaderOrder)
+        .filter(ReaderOrder.chapter_id == chap.id)
+        .order_by(ReaderOrder.position)
         .all()
-        )
+                )
 
         if chapter_scenes:
-            for scene in chapter_scenes:
-                st.write(scene.title)
+            for order in chapter_scenes:
+
+                scene = db.get(Scene, order.scene_id)
+
+                with st.expander(f"🎬 {scene.title}"):
+
+                    st.write(f"Scene Title: {scene.title}")
+
+                    if scene.summary:
+                        st.write(f"Summary: {scene.summary}")
+
+                    col1, col2, col3, col4 = st.columns([6, 1, 1, 2])
+
+                    with col1:
+                        st.write(f"Position: {order.position}")
+
+                    with col2:
+                        if st.button(
+                            "⬆️",
+                            key=f"up_{order.id}"
+                        ):
+                            if order.position > 1:
+
+                                previous = (
+                                    db.query(ReaderOrder)
+                                    .filter(
+                                        ReaderOrder.chapter_id == chap.id,
+                                        ReaderOrder.position == order.position - 1
+                                    )
+                                    .first()
+                                )
+
+                                if previous:
+                                    current_position = order.position
+                                    previous_position = previous.position
+
+                                    order.position = 0
+                                    db.flush()
+
+                                    previous.position = current_position
+                                    order.position = previous_position
+
+                                    db.commit()
+                                    st.rerun()
+
+                    with col3:
+                        if st.button(
+                            "⬇️",
+                            key=f"down_{order.id}"
+                        ):
+                            next_scene = (
+                                db.query(ReaderOrder)
+                                .filter(
+                                    ReaderOrder.chapter_id == chap.id,
+                                    ReaderOrder.position == order.position + 1
+                                )
+                                .first()
+                            )
+
+                            if next_scene:
+
+                                current_position = order.position
+                                next_position = next_scene.position
+
+                                order.position = 0
+                                db.flush()
+
+                                next_scene.position = current_position
+                                order.position = next_position
+
+                                db.commit()
+                                st.rerun()
+
+                    with col4:
+                        if st.button(
+                            "↩️ Remove",
+                            key=f"remove_{scene.id}"
+                        ):
+                            scene.chapter_id = None
+
+                            removed_position = order.position
+
+                            db.delete(order)
+                            db.flush()
+
+                            following_scenes = (
+                            db.query(ReaderOrder)
+                                        .filter(
+                                            ReaderOrder.chapter_id == chap.id,
+                                            ReaderOrder.position > removed_position
+                                        )
+                                        .all()
+                                    )
+
+                            for following in following_scenes:
+                                    following.position -= 1
+
+                            db.commit()
+                            st.rerun()
+
+
+
+                    if st.button(
+                        "🎬 Go to Scene",
+                        key=f"go_scene_{scene.id}"
+                    ):
+                        st.session_state["target_scene_id"] = scene.id
+                        st.switch_page("pages/5_Scenes.py")
+
         else:
             st.info("No scenes assigned.")
 
@@ -129,4 +237,6 @@ else:
     st.success("All scenes have been assigned!")
     
     
+
+
 
