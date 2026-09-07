@@ -1,4 +1,4 @@
-mport streamlit as st
+import streamlit as st
 from models import Location
 from database import Session
 
@@ -100,6 +100,10 @@ for loc in locations:
                 loc.parent_location_id
             )
 
+            st.write(
+                f"Inside: "
+                f"{parent.name}"
+            )
             st.write(
                 f"Inside: "
                 f"{parent.name}"
